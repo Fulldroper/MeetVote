@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(ls \"D:\\\\pc\\\\workspace\\\\ui\" -Force 2>&1 | head -50)",
+      "Read(//d/pc/workspace/ui/**)",
+      "PowerShell(Get-ChildItem -LiteralPath \"D:\\\\pc\\\\workspace\\\\ui\" -Force | Where-Object { $_.Name -ne 'node_modules' } | Select-Object Mode, Name | Format-Table -AutoSize)",
+      "Bash(npm install *)"
+    ]
+  }
+}

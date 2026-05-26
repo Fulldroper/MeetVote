@@ -1,0 +1,53 @@
+@use './styles/variables' as vars;
+
+:root {
+  color-scheme: light;
+  font-family: Inter, 'Segoe UI', Roboto, sans-serif;
+  --fd-bg: 0 0% 98%;
+  --fd-surface: 0 0% 100%;
+  --fd-surface-2: 150 8% 95%;
+  --fd-border: 150 12% 82%;
+  --fd-text: 160 18% 12%;
+  --fd-muted: 160 8% 40%;
+  --fd-accent: 159 64% 45%;
+  --fd-accent-2: 160 20% 8%;
+  --fd-success: 142 60% 28%;
+  --fd-danger: 0 65% 48%;
+  --fd-accent-on: 0 0% 100%;
+  background: linear-gradient(180deg, hsl(var(--fd-bg)), hsl(var(--fd-surface)));
+  color: hsl(var(--fd-text));
+}
+
+html.dark {
+  color-scheme: dark;
+  --fd-bg: 210 6% 12%;
+  --fd-surface: 210 6% 16%;
+  --fd-surface-2: 210 6% 20%;
+  --fd-border: 220 10% 28%;
+  --fd-text: 220 3% 79%;
+  --fd-muted: 220 3% 50%;
+  --fd-accent: 159 64% 45%;
+  --fd-accent-2: 0 0% 93%;
+  --fd-success: 142 55% 44%;
+  --fd-danger: 0 72% 60%;
+  --fd-accent-on: 160 18% 10%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 0%, hsl(var(--fd-accent) / 0.1) 0%, transparent 32%),
+    radial-gradient(circle at 88% 20%, hsl(var(--fd-accent) / 0.06) 0%, transparent 38%),
+    linear-gradient(180deg, hsl(var(--fd-bg)), hsl(var(--fd-surface)));
+  background-attachment: fixed;
+  color: hsl(var(--fd-text));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#app {
+  min-height: 100vh;
+}
