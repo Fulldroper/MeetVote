@@ -130,7 +130,7 @@ const faqs = [
         <span class="kicker-sep">/</span>
         <span>how_it_works</span>
       </p>
-      <h2>три кроки до зручної зустрічі</h2>
+      <h2>Три кроки до зручної зустрічі</h2>
       <p class="section-lead">Від створення голосування до фінального рішення — менше хвилини активної роботи.</p>
     </header>
 
@@ -150,7 +150,7 @@ const faqs = [
         <span class="kicker-sep">/</span>
         <span>features</span>
       </p>
-      <h2>усе, що потрібно для планування</h2>
+      <h2>Усе, що потрібно для планування</h2>
       <p class="section-lead">Інструменти, які прибирають тертя зі звичних процесів узгодження часу.</p>
     </header>
 
@@ -170,7 +170,7 @@ const faqs = [
         <span class="kicker-sep">/</span>
         <span>for_who</span>
       </p>
-      <h2>підходить різним сценаріям</h2>
+      <h2>Підходить різним сценаріям</h2>
     </header>
 
     <div class="audience">
@@ -189,7 +189,7 @@ const faqs = [
         <span class="kicker-sep">/</span>
         <span>common_questions</span>
       </p>
-      <h2>питання, що виникають найчастіше</h2>
+      <h2>Питання, що виникають найчастіше</h2>
     </header>
 
     <div class="faqs">
@@ -206,7 +206,7 @@ const faqs = [
       <span class="kicker-sep">/</span>
       <span>get_started</span>
     </p>
-    <h2>готові спробувати?</h2>
+    <h2>Готові спробувати?</h2>
     <p>Створіть перше голосування — це безкоштовно і займає менше хвилини.</p>
     <div class="hero-actions">
       <FdButton @click="goCreate()">Створити голосування</FdButton>
