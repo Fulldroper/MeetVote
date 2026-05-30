@@ -220,6 +220,6 @@ meetvote-theme         # light | dark
 
 ---
 
-## Ліцензія
+## Ліцензія GPLv3
 
-MIT
+[LICENSE](LICENSE)

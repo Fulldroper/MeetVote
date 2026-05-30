@@ -4,8 +4,8 @@ import { RouterLink } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import { useApp } from './composables/useApp'
 
-const GITHUB_URL = 'https://github.com/'
-const LICENSE_URL = 'https://opensource.org/licenses/MIT'
+const GITHUB_URL = 'https://github.com/Fulldroper/MeetVote'
+const LICENSE_URL = 'https://www.gnu.org/licenses/gpl-3.0.html'
 
 const theme = ref<'light' | 'dark'>('light')
 const { bootstrap } = useApp()
@@ -50,7 +50,7 @@ onMounted(() => {
             <p class="footer-col-title">project</p>
             <RouterLink to="/about">Про проєкт</RouterLink>
             <a :href="GITHUB_URL" target="_blank" rel="noopener">GitHub</a>
-            <a :href="LICENSE_URL" target="_blank" rel="noopener">MIT-ліцензія</a>
+            <a :href="LICENSE_URL" target="_blank" rel="noopener">GPL-3.0-ліцензія</a>
           </div>
           <div class="footer-col">
             <p class="footer-col-title">data</p>
@@ -61,7 +61,7 @@ onMounted(() => {
       </div>
 
       <div class="footer-bottom">
-        <span>© {{ new Date().getFullYear() }} meetvote · open source · mit</span>
+        <span>© {{ new Date().getFullYear() }} meetvote · open source · gpl-3.0</span>
       </div>
     </footer>
   </div>
