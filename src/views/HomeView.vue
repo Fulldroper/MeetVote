@@ -43,12 +43,12 @@ const features = [
   {
     label: 'auto_pick',
     title: 'Швидкий результат',
-    description: 'Отримуйте рекомендації з найбільш підходящим слотом і зберігайте дані одним кліком.'
+    description: 'Отримуйте рекомендації з найбільш підходящим часом і зберігайте дані одним кліком.'
   },
   {
     label: 'timezone_aware',
     title: 'Часові пояси',
-    description: 'Автоматичне врахування TZ — кожен бачить час у власному поясі без плутанини.'
+    description: 'Автоматичне врахування часового поясу — кожен бачить час у власному поясі без плутанини.'
   },
   {
     label: 'export_ready',
@@ -442,15 +442,53 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
 
 /* ---------- audience ---------- */
 
+// .audience-section {
+//   position: relative;
+//   padding-left: clamp(24px, 4vw, 56px);
+//   padding-right: clamp(24px, 4vw, 56px);
+//   border-radius: 18px;
+//   background:
+//     radial-gradient(circle at 0% 50%, hsl(var(--fd-accent) / 0.08) 0%, transparent 40%),
+//     hsl(vars.$fd-surface-2);
+//   border: 1px dashed hsl(vars.$fd-border);
+// }
+
 .audience-section {
   position: relative;
   padding-left: clamp(24px, 4vw, 56px);
   padding-right: clamp(24px, 4vw, 56px);
   border-radius: 18px;
+  overflow: hidden; // важливо, щоб картинки не вилізали
+
   background:
     radial-gradient(circle at 0% 50%, hsl(var(--fd-accent) / 0.08) 0%, transparent 40%),
-    hsl(vars.$fd-surface-2);
+    hsl(vars.$fd-surface);
+
   border: 1px dashed hsl(vars.$fd-border);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 600px;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+
+  &::before {
+    left: 0;
+    background-image: url("/bg1.svg");
+  }
+
+  &::after {
+    right: 0;
+    background-image: url("/bg2.svg");
+  }
 }
 
 .audience {
