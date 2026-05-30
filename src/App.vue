@@ -61,7 +61,7 @@ onMounted(() => {
       </div>
 
       <div class="footer-bottom">
-        <span>© {{ new Date().getFullYear() }} meetvote · open source · gpl-3.0</span>
+        <span>© {{ new Date().getFullYear() }} meetvote · open source · gpl-3.0 · made by <a href="https://github.com/Fulldroper">Full_droper</a></span>
       </div>
     </footer>
   </div>
