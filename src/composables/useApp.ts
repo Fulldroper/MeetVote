@@ -7,6 +7,7 @@ import {
   fetchVotesRemote,
   submitVoteRemote,
   updateVoteRemote,
+  updatePollRemote,
 } from '../api/polls'
 
 export type Interval = { start: number; end: number }
@@ -34,6 +35,11 @@ export type Poll = {
   showLiveResults: boolean
   anonymous: boolean
   autoClose: boolean
+  closeMode: 'time' | 'weeks' | 'votes'
+  closeAfterWeeks: number
+  closeVotesThreshold: number
+  creatorNickname: string
+  creatorToken: string
   status: 'live' | 'closed'
 }
 
@@ -64,21 +70,35 @@ export type UserPollHistoryItem = {
   lastVotedAt: string
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
+const toUtcDayString = (date: Date) => {
+  const normalized = new Date(date)
+  normalized.setHours(0, 0, 0, 0)
+  return normalized.toISOString().slice(0, 10)
+}
+
+const parseUtcDay = (value: string) => new Date(`${value}T00:00:00Z`)
+
+const localDateKey = (date: Date) =>
+  `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 
 const defaultPoll = (): Poll => ({
   id: '',
   title: 'Коли провести командний міт?',
   description: '',
-  timezone: 'Europe/Kyiv',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   endAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 6).toISOString().slice(0, 16),
-  startDate: todayIso(),
-  endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 6).toISOString().slice(0, 10),
+  startDate: toUtcDayString(new Date()),
+  endDate: toUtcDayString(new Date(Date.now() + 1000 * 60 * 60 * 24 * 6)),
   intervalMinutes: 60,
   allowEdit: true,
   showLiveResults: true,
   anonymous: false,
   autoClose: true,
+  closeMode: 'time',
+  closeAfterWeeks: 1,
+  closeVotesThreshold: 5,
+  creatorNickname: '',
+  creatorToken: '',
   status: 'live',
 })
 
@@ -104,24 +124,67 @@ const realtimePulse = ref(0)
 
 const dateOptions = computed(() => {
   const result: string[] = []
-  const start = new Date(poll.value.startDate)
-  const end = new Date(poll.value.endDate)
+  const start = parseUtcDay(poll.value.startDate)
+  const end = parseUtcDay(poll.value.endDate)
   while (start <= end) {
     result.push(start.toISOString().slice(0, 10))
-    start.setDate(start.getDate() + 1)
+    start.setUTCDate(start.getUTCDate() + 1)
   }
   return result
 })
+
+const localToday = computed(() => {
+  const date = new Date(now.value)
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+})
+
+const isPollCurrentWeek = computed(() =>
+  dateOptions.value.some(
+    (day) => localDateKey(parseUtcDay(day)) === localDateKey(localToday.value),
+  ),
+)
+
+const disabledDays = computed(() =>
+  isPollCurrentWeek.value
+    ? dateOptions.value.filter(
+        (day) => localDateKey(parseUtcDay(day)) < localDateKey(localToday.value),
+      )
+    : [],
+)
+
+const disabledDaySet = computed(() => new Set(disabledDays.value))
+
+const sanitizeDays = (days: string[]) =>
+  isPollCurrentWeek.value ? days.filter((day) => !disabledDaySet.value.has(day)) : days
 
 const timelineStep = computed(() => poll.value.intervalMinutes)
 const hours = computed(() =>
   Array.from({ length: 24 * (60 / timelineStep.value) }, (_, index) => index * timelineStep.value),
 )
-const isPollClosed = computed(() => new Date(poll.value.endAt).getTime() <= now.value.getTime())
+
+const pollClosedByTime = computed(() => new Date(poll.value.endAt).getTime() <= now.value.getTime())
+const pollClosedByVotes = computed(
+  () => poll.value.closeMode === 'votes' && votes.value.length >= poll.value.closeVotesThreshold,
+)
+const pollClosedByWeeks = computed(() => {
+  if (poll.value.closeMode !== 'weeks') return false
+  const start = parseUtcDay(poll.value.startDate)
+  const deadline = new Date(start)
+  deadline.setUTCDate(deadline.getUTCDate() + poll.value.closeAfterWeeks * 7 - 1)
+  deadline.setUTCHours(23, 59, 0, 0)
+  return now.value.getTime() >= deadline.getTime()
+})
+
+const isPollClosed = computed(
+  () =>
+    poll.value.status === 'closed' ||
+    (poll.value.autoClose &&
+      (pollClosedByTime.value || pollClosedByVotes.value || pollClosedByWeeks.value)),
+)
 const totalParticipants = computed(() => votes.value.length)
 
 const formatDayHeader = (day: string) => {
-  const parsed = new Date(`${day}T12:00:00`)
+  const parsed = parseUtcDay(day)
   return {
     weekday: parsed.toLocaleDateString('uk-UA', { weekday: 'long' }),
     monthDay: parsed.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' }),
@@ -154,6 +217,17 @@ const persistCurrent = () => {
 const persistUserPreferences = () => {
   localStorage.setItem(USER_NICKNAME_KEY, userNickname.value)
   localStorage.setItem(USER_HISTORY_KEY, JSON.stringify(userHistory.value))
+}
+
+const setUserNickname = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return
+  const previous = userNickname.value
+  userNickname.value = trimmed
+  if (!nickname.value.trim() || nickname.value === previous) {
+    nickname.value = trimmed
+  }
+  persistUserPreferences()
 }
 
 const loadUserPreferences = () => {
@@ -232,9 +306,12 @@ const restoreUserVoteForPoll = (id: string) => {
 }
 
 const resetSelection = (days: string[]) => {
-  selectedDays.value = days
-  selectedIntervals.value = Object.fromEntries(days.map((day) => [day, [] as Interval[]]))
-  activeDay.value = days[0] ?? ''
+  const validDays = sanitizeDays(days)
+  selectedDays.value = validDays.length ? validDays : [days[0]]
+  selectedIntervals.value = Object.fromEntries(
+    selectedDays.value.map((day) => [day, [] as Interval[]]),
+  )
+  activeDay.value = selectedDays.value[0] ?? ''
 }
 
 const loadPoll = (id: string): boolean => {
@@ -267,12 +344,12 @@ const loadLegacy = () => {
     if (parsed.poll) poll.value = { ...defaultPoll(), ...parsed.poll }
     if (parsed.votes) votes.value = parsed.votes
     const days = parsed.selectedDays?.length ? parsed.selectedDays : dateOptions.value
-    selectedDays.value = days
+    selectedDays.value = sanitizeDays(days)
     selectedIntervals.value = Object.fromEntries(
-      days.map((day) => [day, parsed.selectedIntervals?.[day] ?? []]),
+      selectedDays.value.map((day) => [day, parsed.selectedIntervals?.[day] ?? []]),
     )
-    if (!activeDay.value || !days.includes(activeDay.value)) {
-      activeDay.value = days[0] ?? ''
+    if (!activeDay.value || !selectedDays.value.includes(activeDay.value)) {
+      activeDay.value = selectedDays.value[0] ?? ''
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY)
@@ -312,6 +389,7 @@ const moveCurrentDay = (direction: -1 | 1) => {
 }
 
 const toggleDayTag = (day: string) => {
+  if (disabledDaySet.value.has(day)) return
   const next = new Set(selectedDays.value)
   if (next.has(day)) next.delete(day)
   else next.add(day)
@@ -609,12 +687,52 @@ const endDragSelection = () => {
   hoverPosition.value = { minute: range.end, x: minuteToX(range.end), y: timelineHeight / 2 }
 }
 
+const isLocalCreator = computed(() => {
+  if (!poll.value.id || !poll.value.creatorToken) return false
+  const stored = localStorage.getItem(`${POLL_PREFIX}${poll.value.id}`)
+  return Boolean(stored && stored.includes(poll.value.creatorToken))
+})
+
+const closePoll = async () => {
+  if (poll.value.status === 'closed') return
+  poll.value.status = 'closed'
+  userHistory.value = userHistory.value.map((item) =>
+    item.id === poll.value.id ? { ...item, status: 'closed' } : item,
+  )
+
+  if (hasSupabase() && poll.value.id) {
+    try {
+      await updatePollRemote(poll.value)
+    } catch (error) {
+      console.warn('Supabase poll status update failed', error)
+    }
+  }
+
+  persistCurrent()
+}
+
 const createPoll = async () => {
   poll.value.id = generateId()
   poll.value.status = 'live'
-  poll.value.startDate = new Date(poll.value.startDate).toISOString().slice(0, 10)
-  poll.value.endDate = new Date(poll.value.endDate).toISOString().slice(0, 10)
-  poll.value.endAt = new Date(poll.value.endAt).toISOString()
+  poll.value.creatorToken = poll.value.creatorToken || generateId().slice(0, 8)
+  poll.value.creatorNickname = userNickname.value.trim()
+  poll.value.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  poll.value.startDate = toUtcDayString(new Date(`${poll.value.startDate}T00:00:00`))
+  poll.value.closeAfterWeeks = Math.max(1, poll.value.closeAfterWeeks)
+  poll.value.closeVotesThreshold = Math.max(1, poll.value.closeVotesThreshold)
+
+  if (poll.value.closeMode === 'weeks') {
+    const start = parseUtcDay(poll.value.startDate)
+    const end = new Date(start)
+    end.setUTCDate(end.getUTCDate() + poll.value.closeAfterWeeks * 7 - 1)
+    end.setUTCHours(23, 59, 0, 0)
+    poll.value.endAt = end.toISOString()
+    poll.value.endDate = toUtcDayString(end)
+  } else {
+    poll.value.endDate = toUtcDayString(new Date(`${poll.value.endDate}T00:00:00`))
+    poll.value.endAt = new Date(poll.value.endAt).toISOString()
+  }
+
   votes.value = []
   resetSelection(dateOptions.value)
 
@@ -714,6 +832,16 @@ watch([poll, votes, selectedIntervals], () => {
   persistCurrent()
 }, { deep: true })
 
+watch(isPollClosed, (closed) => {
+  if (closed && poll.value.status !== 'closed') {
+    poll.value.status = 'closed'
+    userHistory.value = userHistory.value.map((item) =>
+      item.id === poll.value.id ? { ...item, status: 'closed' } : item,
+    )
+    persistCurrent()
+  }
+})
+
 let bootstrapped = false
 const bootstrap = () => {
   if (bootstrapped) return
@@ -808,6 +936,7 @@ export function useApp() {
     currentDayIntervals,
     heatmap,
     maxHeat,
+    disabledDays,
     showArrows,
     currentDayIndex,
     timelinePoints,
@@ -829,6 +958,9 @@ export function useApp() {
     endDragSelection,
     createPoll,
     submitVote,
+    closePoll,
+    isLocalCreator,
+    setUserNickname,
     bootstrap,
     ensurePollLoaded,
     newDraft,

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import { FdInput } from '@fulldroper/ui-kit'
 import { useApp } from '../composables/useApp'
 
-const { userNickname, userHistory } = useApp()
+const { userNickname, userHistory, setUserNickname } = useApp()
 
 const hasVotes = computed(() => userHistory.value.length > 0)
 const greetingText = computed(() => `Вітаємо, ${userNickname.value}`)
@@ -34,6 +35,16 @@ const formatDateTime = (value: string) =>
     </header>
 
     <div class="profile-content">
+      <section class="profile-nickname">
+        <FdInput
+          :model-value="userNickname"
+          @update:modelValue="setUserNickname"
+          label="Ваш нікнейм"
+          placeholder="Наприклад: Олена"
+        />
+        <p class="profile-note">Зміна ніку зберігається локально і підставляється в майбутніх голосах.</p>
+      </section>
+
       <template v-if="hasVotes">
         <p class="profile-metadata">У вас {{ userHistory.length }} голосів у історії.</p>
         <ul class="history-list">
@@ -216,5 +227,21 @@ const formatDateTime = (value: string) =>
   color: hsl(var(--fd-accent));
   text-decoration: none;
   font-weight: 700;
+}
+
+.profile-nickname {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border: 1px dashed hsl(var(--fd-border));
+  border-radius: 18px;
+  background: hsl(var(--fd-surface));
+}
+
+.profile-note {
+  margin: 0;
+  color: hsl(var(--fd-muted));
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 </style>

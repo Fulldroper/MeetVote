@@ -34,6 +34,8 @@ const props = defineProps<{
   hoverPosition: HoverPosition | null
   previewRange: PreviewRange | null
   showArrows: boolean
+  disabledDays: string[]
+  canClosePoll: boolean
   poll: Poll
   totalParticipants: number
   isPollClosed: boolean
@@ -54,6 +56,7 @@ const emit = defineEmits<{
   (event: 'point-leave'): void
   (event: 'point-click', minute: number): void
   (event: 'edit-selection', payload: PointerEvent, range: Interval): void
+  (event: 'close-poll'): void
 }>()
 
 const timelineWidth = 960
@@ -102,6 +105,14 @@ const canSubmit = computed(
         </FdBadge>
         <FdBadge tone="muted">{{ totalParticipants }} учасників</FdBadge>
         <FdBadge tone="muted">{{ poll.intervalMinutes }} хв крок</FdBadge>
+        <FdButton
+          v-if="canClosePoll && !isPollClosed"
+          variant="secondary"
+          size="small"
+          @click="$emit('close-poll')"
+        >
+          Закрити голосування
+        </FdButton>
       </div>
 
       <div class="share-row">
@@ -138,6 +149,7 @@ const canSubmit = computed(
       <DayTagRow
         :date-options="dateOptions"
         :selected-days="selectedDays"
+        :disabled-days="disabledDays"
         @toggle-day="(day) => emit('toggle-day', day)"
       />
     </section>

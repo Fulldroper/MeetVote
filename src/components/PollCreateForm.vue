@@ -1,21 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { FdButton, FdInput, FdPanel, FdSelect, FdSwitch } from '@fulldroper/ui-kit'
-
-type Poll = {
-  id?: string
-  title: string
-  description: string
-  timezone: string
-  endAt: string
-  startDate: string
-  endDate: string
-  intervalMinutes: number
-  allowEdit: boolean
-  showLiveResults: boolean
-  anonymous: boolean
-  autoClose: boolean
-}
+import type { Poll } from '../composables/useApp'
 
 const props = defineProps<{
   poll: Poll
@@ -25,10 +11,13 @@ const emit = defineEmits<{
   (event: 'create'): void
 }>()
 
-const toIsoDate = (d: Date) => {
-  const tz = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10)
+const toUtcDate = (d: Date) => {
+  const normalized = new Date(d)
+  normalized.setHours(0, 0, 0, 0)
+  return normalized.toISOString().slice(0, 10)
 }
+
+const parseUtcDay = (value: string) => new Date(`${value}T00:00:00Z`)
 
 const getMonday = (date: Date) => {
   const d = new Date(date)
@@ -60,7 +49,7 @@ const weekOptions = computed(() => {
         ? 'Наступний тиждень'
         : `Через ${offset} тижні`
     return {
-      value: toIsoDate(start),
+      value: toUtcDate(start),
       label: `${prefix} · ${fmt(start)} – ${fmt(end)}`,
     }
   })
@@ -69,30 +58,44 @@ const weekOptions = computed(() => {
 const selectedWeek = ref<string>(weekOptions.value[0].value)
 
 const weekRangeLabel = computed(() => {
-  const start = new Date(selectedWeek.value)
+  const start = parseUtcDay(selectedWeek.value)
   const end = addDays(start, 6)
   const fmt = (d: Date) =>
     d.toLocaleDateString('uk-UA', { weekday: 'short', day: 'numeric', month: 'long' })
   return `${fmt(start)} → ${fmt(end)}`
 })
 
+const closeModeOptions = [
+  { value: 'time', label: 'За часом' },
+  { value: 'weeks', label: 'Через тижні' },
+  { value: 'votes', label: 'За кількістю голосів' },
+]
+
+const closeModeHint = computed(() => {
+  if (props.poll.closeMode === 'votes') {
+    return 'Голосування закривається автоматично, коли досягнуто порогової кількості голосів.'
+  }
+  if (props.poll.closeMode === 'weeks') {
+    return 'Голосування закривається через задану кількість тижнів після початку.'
+  }
+  return 'Голосування закривається наприкінці обраного тижня.'
+})
+
 const applyWeek = (monday: string) => {
-  const start = new Date(monday)
+  const start = parseUtcDay(monday)
   const end = addDays(start, 6)
   const endAt = new Date(end)
-  endAt.setHours(23, 59, 0, 0)
+  endAt.setUTCHours(23, 59, 0, 0)
 
-  props.poll.startDate = toIsoDate(start)
-  props.poll.endDate = toIsoDate(end)
+  props.poll.startDate = monday
+  props.poll.endDate = toUtcDate(end)
   props.poll.endAt = endAt.toISOString().slice(0, 16)
 }
 
 watch(selectedWeek, (value) => applyWeek(value))
 
 onMounted(() => {
-  const existingMonday = props.poll.startDate
-    ? toIsoDate(getMonday(new Date(props.poll.startDate)))
-    : null
+  const existingMonday = props.poll.startDate ? props.poll.startDate : null
   const match = weekOptions.value.find((opt) => opt.value === existingMonday)
   selectedWeek.value = match ? match.value : weekOptions.value[0].value
   applyWeek(selectedWeek.value)
@@ -139,6 +142,37 @@ const canCreate = computed(() => props.poll.title.trim().length > 0)
             <span class="kicker-sep">/</span>
             <span>{{ weekRangeLabel }}</span>
           </p>
+        </div>
+
+        <div class="close-settings">
+          <FdSelect
+            v-model="props.poll.closeMode"
+            label="Умова завершення"
+            :options="closeModeOptions"
+          />
+
+          <div class="close-params">
+            <template v-if="props.poll.closeMode === 'weeks'">
+              <FdInput
+                v-model="props.poll.closeAfterWeeks"
+                type="number"
+                label="Кількість тижнів"
+                min="1"
+                placeholder="1"
+              />
+            </template>
+            <template v-else-if="props.poll.closeMode === 'votes'">
+              <FdInput
+                v-model="props.poll.closeVotesThreshold"
+                type="number"
+                label="Порог голосів"
+                min="1"
+                placeholder="5"
+              />
+            </template>
+          </div>
+
+          <p class="close-hint">{{ closeModeHint }}</p>
         </div>
 
         <div class="switch-row">
@@ -228,6 +262,27 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
   border: 1px dashed hsl(vars.$fd-border);
   border-radius: 10px;
   background: hsl(vars.$fd-surface-2);
+}
+
+.close-settings {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px dashed hsl(vars.$fd-border);
+  border-radius: 14px;
+  background: hsl(vars.$fd-surface);
+}
+
+.close-params {
+  display: grid;
+  gap: 14px;
+}
+
+.close-hint {
+  margin: 0;
+  color: hsl(vars.$fd-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .week-preview-label {

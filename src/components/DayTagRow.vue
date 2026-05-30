@@ -4,6 +4,7 @@ import { FdBadge } from '@fulldroper/ui-kit'
 const props = defineProps<{
   dateOptions: string[]
   selectedDays: string[]
+  disabledDays?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const isActive = (day: string) => props.selectedDays.includes(day)
+const isDisabled = (day: string) => props.disabledDays?.includes(day) ?? false
 
 const formatWeekday = (day: string) => {
   const d = new Date(`${day}T12:00:00`)
@@ -26,10 +28,13 @@ const formatWeekday = (day: string) => {
       :key="day"
       type="button"
       class="day-tag"
-      :class="{ active: isActive(day) }"
+      :class="{ active: isActive(day), disabled: isDisabled(day) }"
+      :disabled="isDisabled(day)"
       @click="emit('toggle-day', day)"
     >
-      <FdBadge :tone="isActive(day) ? 'success' : 'muted'">{{ formatWeekday(day) }}</FdBadge>
+      <FdBadge :tone="isDisabled(day) ? 'muted' : isActive(day) ? 'success' : 'muted'">
+        {{ formatWeekday(day) }}
+      </FdBadge>
     </button>
   </div>
 </template>
@@ -51,5 +56,14 @@ const formatWeekday = (day: string) => {
 .day-tag.active :deep(.fd-badge) {
   background: hsl(var(--fd-accent) / 0.16);
   border-color: hsl(var(--fd-accent));
+}
+
+.day-tag.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.day-tag.disabled :deep(.fd-badge) {
+  color: hsl(var(--fd-muted));
 }
 </style>

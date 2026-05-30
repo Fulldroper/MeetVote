@@ -48,14 +48,52 @@ onMounted(() => {
         <div class="footer-columns">
           <div class="footer-col">
             <p class="footer-col-title">project</p>
-            <RouterLink to="/about">Про проєкт</RouterLink>
-            <a :href="GITHUB_URL" target="_blank" rel="noopener">GitHub</a>
-            <a :href="LICENSE_URL" target="_blank" rel="noopener">GPL-3.0-ліцензія</a>
+            <RouterLink to="/about">
+              <span class="footer-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="8" r="3" />
+                  <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
+                </svg>
+              </span>
+              Про проєкт
+            </RouterLink>
+            <a :href="GITHUB_URL" target="_blank" rel="noopener">
+              <span class="footer-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2C3.5 2 2 4 2 6.5c0 2 1.5 3.5 3 4.5 0 .5-.5 1-1 1.5v1c0 .3.2.5.5.5h5c.3 0 .5-.2.5-.5v-1c-.5-.5-1-1-1-1.5 1.5-1 3-2.5 3-4.5C14 4 12.5 2 10 2h-4z" />
+                </svg>
+              </span>
+              GitHub
+            </a>
+            <a :href="LICENSE_URL" target="_blank" rel="noopener">
+              <span class="footer-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 2h8v12H4z" />
+                  <path d="M4 6h8" />
+                </svg>
+              </span>
+              GPL-3.0-ліцензія
+            </a>
           </div>
           <div class="footer-col">
             <p class="footer-col-title">data</p>
-            <RouterLink to="/privacy">Конфіденційність</RouterLink>
-            <RouterLink to="/new">Створити голосування</RouterLink>
+            <RouterLink to="/privacy">
+              <span class="footer-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7V5a4 4 0 0 1 8 0v2" />
+                  <rect x="3" y="7" width="10" height="6" rx="2" />
+                </svg>
+              </span>
+              Конфіденційність
+            </RouterLink>
+            <RouterLink to="/new">
+              <span class="footer-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 3v10M3 8h10" />
+                </svg>
+              </span>
+              Створити голосування
+            </RouterLink>
           </div>
         </div>
       </div>
@@ -144,10 +182,26 @@ main {
 }
 
 .footer-col a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   color: hsl(var(--fd-muted));
   text-decoration: none;
   font-size: 0.92rem;
   transition: color 140ms ease;
+}
+
+.footer-link-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-link-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .footer-col a:hover {

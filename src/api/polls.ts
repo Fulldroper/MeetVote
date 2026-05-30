@@ -61,6 +61,11 @@ const rowToPoll = (row: Record<string, unknown>): Poll => ({
   showLiveResults: true,
   anonymous: false,
   autoClose: true,
+  closeMode: 'time',
+  closeAfterWeeks: 1,
+  closeVotesThreshold: 5,
+  creatorNickname: '',
+  creatorToken: '',
   status: (row.status as 'live' | 'closed') ?? 'live',
 })
 
@@ -110,6 +115,15 @@ export const updateVoteRemote = async (pollId: string, vote: Vote): Promise<void
     .from('votes')
     .update(voteToRow(pollId, vote))
     .eq('id', vote.id)
+  if (error) throw error
+}
+
+export const updatePollRemote = async (poll: Poll): Promise<void> => {
+  if (!hasSupabase()) return
+  const { error } = await supabase()
+    .from('polls')
+    .update(pollToRow(poll))
+    .eq('id', poll.id)
   if (error) throw error
 }
 
