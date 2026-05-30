@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { FdBadge, FdButton } from '@fulldroper/ui-kit'
 import { useRouter } from 'vue-router'
+import { useApp } from '../composables/useApp'
 
 const router = useRouter()
+const app = useApp()
+const goToPoll = (id: string) => router.push(`/poll/${id}`)
 const goCreate = () => router.push('/new')
+
+const hasHistory = computed(() => app.userHistory.value.length > 0)
 
 const steps = [
   {

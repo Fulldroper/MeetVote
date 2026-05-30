@@ -1,6 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { FdButton } from '@fulldroper/ui-kit'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
+import { useApp } from '../composables/useApp'
+
+const route = useRoute()
+const { userNickname, userHistory } = useApp()
+
+const showUserGreeting = computed(
+  () => userNickname.value.trim().length > 0 && userHistory.value.length > 0,
+)
+const greetingText = computed(() => `Вітаємо, ${userNickname.value}`)
+const showMyPollsLink = computed(
+  () => showUserGreeting.value && route.path !== '/profile/my_polls',
+)
 
 defineProps<{
   theme: 'light' | 'dark'
@@ -18,6 +31,13 @@ const emit = defineEmits<{
     </div>
 
     <div class="header-actions">
+      <div v-if="showUserGreeting" class="user-greeting">
+        <span class="user-name">{{ greetingText }}</span>
+        <RouterLink v-if="showMyPollsLink" to="/profile/my_polls">
+          <FdButton variant="secondary" size="small">Мої голоси</FdButton>
+        </RouterLink>
+      </div>
+
       <FdButton variant="ghost" size="small" class="theme-toggle" @click="emit('toggle-theme')" aria-label="Перемкнути тему">
         <svg v-if="theme === 'light'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
@@ -73,6 +93,24 @@ const emit = defineEmits<{
 
 .brand-badge:focus-visible {
   outline: 2px solid hsl(vars.$fd-accent);
+  gap: 12px;
+}
+
+.user-greeting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-right: 12px;
+}
+
+.user-name {
+  font-weight: 700;
+  color: hsl(var(--fd-text));
+}
+
+.header-actions a {
+  display: inline-flex;
   outline-offset: 4px;
   border-radius: 4px;
 }

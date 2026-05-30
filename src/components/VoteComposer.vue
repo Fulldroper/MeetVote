@@ -59,7 +59,10 @@ const emit = defineEmits<{
 const timelineWidth = 960
 const timelineHeight = 180
 
-const shareUrl = computed(() => `${window.location.origin}${window.location.pathname.replace(/\/?$/, '')}#/poll/${props.poll.id}`.replace('#//', '/'))
+const shareUrl = computed(() => {
+  const base = `${window.location.origin}${window.location.pathname.replace(/\/?$/, '')}`.replace('#//', '/')
+  return `${base}/poll/${props.poll.id}`
+})
 
 const totalSelected = computed(() =>
   props.selectedDays.reduce(

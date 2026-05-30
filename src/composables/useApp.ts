@@ -1,10 +1,12 @@
 import { computed, ref, watch } from 'vue'
 import { hasSupabase } from '../lib/supabase'
+import generateId from '../lib/id_generate'
 import {
   createPollRemote,
   fetchPollRemote,
   fetchVotesRemote,
   submitVoteRemote,
+  updateVoteRemote,
 } from '../api/polls'
 
 export type Interval = { start: number; end: number }
@@ -47,6 +49,20 @@ export type EditDragState = {
 const STORAGE_KEY = 'meetvote-prototype-v2'
 const POLL_PREFIX = 'meetvote-poll-'
 const VOTES_PREFIX = 'meetvote-votes-'
+const USER_NICKNAME_KEY = 'meetvote-nickname'
+const USER_HISTORY_KEY = 'meetvote-user-history'
+
+export type UserPollHistoryItem = {
+  id: string
+  title: string
+  description: string
+  startDate: string
+  endDate: string
+  status: 'live' | 'closed'
+  editToken: string
+  voteId: string
+  lastVotedAt: string
+}
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
@@ -72,6 +88,10 @@ const timelineHeight = 180
 const poll = ref<Poll>(defaultPoll())
 const votes = ref<Vote[]>([])
 const nickname = ref('')
+const userNickname = ref('')
+const userHistory = ref<UserPollHistoryItem[]>([])
+const currentVoteId = ref<string | null>(null)
+const currentEditToken = ref('')
 const selectedDays = ref<string[]>([])
 const selectedIntervals = ref<Record<string, Interval[]>>({})
 const applyToAllDays = ref(true)
@@ -128,6 +148,87 @@ const persistCurrent = () => {
       selectedIntervals: selectedIntervals.value,
     }),
   )
+  persistUserPreferences()
+}
+
+const persistUserPreferences = () => {
+  localStorage.setItem(USER_NICKNAME_KEY, userNickname.value)
+  localStorage.setItem(USER_HISTORY_KEY, JSON.stringify(userHistory.value))
+}
+
+const loadUserPreferences = () => {
+  const storedNickname = localStorage.getItem(USER_NICKNAME_KEY)
+  if (storedNickname) {
+    userNickname.value = storedNickname
+    nickname.value = storedNickname
+  }
+  const rawHistory = localStorage.getItem(USER_HISTORY_KEY)
+  if (rawHistory) {
+    try {
+      userHistory.value = JSON.parse(rawHistory) as UserPollHistoryItem[]
+    } catch {
+      userHistory.value = []
+    }
+  }
+}
+
+const setUserVoteHistory = (vote: Vote) => {
+  if (!poll.value.id) return
+  const item: UserPollHistoryItem = {
+    id: poll.value.id,
+    title: poll.value.title,
+    description: poll.value.description,
+    startDate: poll.value.startDate,
+    endDate: poll.value.endDate,
+    status: poll.value.status,
+    editToken: vote.editToken,
+    voteId: vote.id,
+    lastVotedAt: new Date().toISOString(),
+  }
+  const existingIndex = userHistory.value.findIndex((entry) => entry.id === poll.value.id)
+  if (existingIndex >= 0) {
+    userHistory.value.splice(existingIndex, 1)
+  }
+  userHistory.value.unshift(item)
+  if (userHistory.value.length > 50) {
+    userHistory.value.pop()
+  }
+  persistUserPreferences()
+}
+
+const restoreUserVoteForPoll = (id: string) => {
+  const historyItem = userHistory.value.find((entry) => entry.id === id)
+  if (historyItem) {
+    currentEditToken.value = historyItem.editToken
+    currentVoteId.value = historyItem.voteId
+  }
+  const vote = historyItem
+    ? votes.value.find((item) => item.editToken === historyItem.editToken && item.nickname === userNickname.value)
+    : null
+  if (vote) {
+    currentVoteId.value = vote.id
+    currentEditToken.value = vote.editToken
+    nickname.value = vote.nickname
+    userNickname.value = vote.nickname
+    const days = Array.from(new Set(vote.slots.map((slot) => slot.day))).sort()
+    selectedDays.value = days
+    selectedIntervals.value = Object.fromEntries(
+      days.map((day) => [
+        day,
+        vote.slots
+          .filter((slot) => slot.day === day)
+          .map((slot) => ({ start: slot.start, end: slot.end })),
+      ]),
+    )
+    activeDay.value = days[0] ?? ''
+    return true
+  }
+  currentVoteId.value = null
+  currentEditToken.value = ''
+  if (userNickname.value) {
+    nickname.value = userNickname.value
+  }
+  return false
 }
 
 const resetSelection = (days: string[]) => {
@@ -509,7 +610,7 @@ const endDragSelection = () => {
 }
 
 const createPoll = async () => {
-  poll.value.id = crypto.randomUUID()
+  poll.value.id = generateId()
   poll.value.status = 'live'
   poll.value.startDate = new Date(poll.value.startDate).toISOString().slice(0, 10)
   poll.value.endDate = new Date(poll.value.endDate).toISOString().slice(0, 10)
@@ -536,24 +637,45 @@ const submitVote = async () => {
   )
   if (!nickname.value.trim() || slots.length === 0) return
 
+  const trimmedNickname = nickname.value.trim()
+  const currentEdit = currentEditToken.value
+  const existingVoteIndex = votes.value.findIndex(
+    (item) => item.editToken === currentEdit || item.nickname === trimmedNickname,
+  )
   const vote: Vote = {
-    id: crypto.randomUUID(),
-    nickname: nickname.value.trim(),
+    id: generateId(),
+    nickname: trimmedNickname,
     comment: '',
-    editToken: crypto.randomUUID().slice(0, 8),
+    editToken: currentEdit || generateId().slice(0, 8),
     slots,
+  }
+
+  if (existingVoteIndex >= 0) {
+    vote.id = votes.value[existingVoteIndex].id
+    vote.editToken = votes.value[existingVoteIndex].editToken
   }
 
   if (hasSupabase() && poll.value.id) {
     try {
-      await submitVoteRemote(poll.value.id, vote)
+      if (existingVoteIndex >= 0) {
+        await updateVoteRemote(poll.value.id, vote)
+      } else {
+        await submitVoteRemote(poll.value.id, vote)
+      }
     } catch (error) {
       console.warn('Supabase vote submission failed', error)
     }
   }
 
-  votes.value = [vote, ...votes.value]
-  nickname.value = ''
+  if (existingVoteIndex >= 0) {
+    votes.value[existingVoteIndex] = vote
+  } else {
+    votes.value = [vote, ...votes.value]
+  }
+  userNickname.value = trimmedNickname
+  nickname.value = trimmedNickname
+  currentEditToken.value = vote.editToken
+  setUserVoteHistory(vote)
   resetSelection(dateOptions.value)
   persistCurrent()
   realtimePulse.value += 1
@@ -597,6 +719,7 @@ const bootstrap = () => {
   if (bootstrapped) return
   bootstrapped = true
   loadLegacy()
+  loadUserPreferences()
   if (!votes.value.length) sampleDemoVotes()
   setInterval(() => {
     now.value = new Date()
@@ -626,6 +749,7 @@ const ensurePollLoaded = async (id: string) => {
       try {
         votes.value = await fetchVotesRemote(id)
         persistCurrent()
+        restoreUserVoteForPoll(id)
       } catch (error) {
         console.warn('Supabase vote sync failed', error)
       }
@@ -638,10 +762,12 @@ const ensurePollLoaded = async (id: string) => {
       try {
         votes.value = await fetchVotesRemote(id)
         persistCurrent()
+        restoreUserVoteForPoll(id)
       } catch (error) {
         console.warn('Supabase vote sync failed', error)
       }
     }
+    restoreUserVoteForPoll(id)
     return true
   }
 
@@ -660,6 +786,8 @@ export function useApp() {
     poll,
     votes,
     nickname,
+    userNickname,
+    userHistory,
     selectedDays,
     selectedIntervals,
     applyToAllDays,
@@ -704,5 +832,6 @@ export function useApp() {
     bootstrap,
     ensurePollLoaded,
     newDraft,
+    restoreUserVoteForPoll,
   }
 }

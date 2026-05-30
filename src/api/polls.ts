@@ -104,6 +104,15 @@ export const submitVoteRemote = async (pollId: string, vote: Vote): Promise<void
   if (error) throw error
 }
 
+export const updateVoteRemote = async (pollId: string, vote: Vote): Promise<void> => {
+  if (!hasSupabase()) return
+  const { error } = await supabase()
+    .from('votes')
+    .update(voteToRow(pollId, vote))
+    .eq('id', vote.id)
+  if (error) throw error
+}
+
 export const fetchVotesRemote = async (pollId: string): Promise<Vote[]> => {
   if (!hasSupabase()) return []
   const { data, error } = await supabase()

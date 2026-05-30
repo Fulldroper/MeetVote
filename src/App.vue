@@ -69,9 +69,16 @@ onMounted(() => {
 
 <style scoped>
 .app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   max-width: 1240px;
   margin: 0 auto;
   padding: 24px clamp(20px, 4vw, 48px);
+}
+
+main {
+  flex: 1;
 }
 
 .app-footer {
