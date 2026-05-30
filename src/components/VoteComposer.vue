@@ -61,7 +61,7 @@ const timelineHeight = 180
 
 const shareUrl = computed(() => {
   const base = `${window.location.origin}${window.location.pathname.replace(/\/?$/, '')}`.replace('#//', '/')
-  return `${base}/poll/${props.poll.id}`
+  return `${base}`
 })
 
 const totalSelected = computed(() =>
@@ -94,6 +94,7 @@ const canSubmit = computed(
       </p>
       <h1>{{ poll.title || 'Голосування' }}</h1>
       <p v-if="poll.description" class="lead">{{ poll.description }}</p>
+      <p class="lead">Введіть свій нікнейм, позначте дні, коли ви доступні, а потім додайте зручні часи на таймлайні. Це допоможе команді швидко знайти оптимальний слот без реєстрації.</p>
 
       <div class="head-meta">
         <FdBadge :tone="isPollClosed ? 'danger' : 'success'">
@@ -115,6 +116,7 @@ const canSubmit = computed(
         <span class="kicker-sep">/</span>
         <span>identify_yourself</span>
       </p>
+      <p class="block-description">Напишіть, як вас мають бачити в голосуванні. Нікнейм зберігається локально, і це дозволяє відрізнити ваш вибір від інших.</p>
       <FdInput
         :model-value="nickname"
         @update:modelValue="(value: string) => emit('update:nickname', String(value))"
@@ -132,6 +134,7 @@ const canSubmit = computed(
         </p>
         <p class="block-hint">{{ selectedDays.length }} / {{ dateOptions.length }} обрано</p>
       </div>
+      <p class="block-description">Оберіть дні, коли ви можете бути присутніми. Пізніше ви додасте конкретні проміжки для кожного дня.</p>
       <DayTagRow
         :date-options="dateOptions"
         :selected-days="selectedDays"
@@ -152,6 +155,7 @@ const canSubmit = computed(
           label="на всі дні"
         />
       </div>
+      <p class="block-description">Позначте часи, які вам підходять. Якщо ввімкнути «на всі дні», обрані інтервали застосовуються до всіх вибраних дат.</p>
 
       <div class="timeline-shell">
         <button
@@ -351,6 +355,13 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.block-description {
+  margin: 0;
+  color: hsl(vars.$fd-muted);
+  line-height: 1.7;
+  font-size: 0.95rem;
 }
 
 .block-hint {
