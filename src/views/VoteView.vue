@@ -11,12 +11,12 @@ const app = useApp()
 const pollId = computed(() => String(route.params.id ?? ''))
 const notFound = computed(() => Boolean(pollId.value) && app.poll.value.id !== pollId.value)
 
-const loadCurrent = () => {
+const loadCurrent = async () => {
   if (!pollId.value) {
     router.replace('/')
     return
   }
-  app.ensurePollLoaded(pollId.value)
+  await app.ensurePollLoaded(pollId.value)
 }
 
 onMounted(loadCurrent)

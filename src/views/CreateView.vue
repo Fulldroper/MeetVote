@@ -11,8 +11,8 @@ onMounted(() => {
   if (poll.value.id) newDraft()
 })
 
-const handleCreate = () => {
-  createPoll()
+const handleCreate = async () => {
+  await createPoll()
   router.push(`/poll/${poll.value.id}`)
 }
 </script>

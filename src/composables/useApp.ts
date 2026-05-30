@@ -1,4 +1,11 @@
 import { computed, ref, watch } from 'vue'
+import { hasSupabase } from '../lib/supabase'
+import {
+  createPollRemote,
+  fetchPollRemote,
+  fetchVotesRemote,
+  submitVoteRemote,
+} from '../api/polls'
 
 export type Interval = { start: number; end: number }
 
@@ -501,7 +508,7 @@ const endDragSelection = () => {
   hoverPosition.value = { minute: range.end, x: minuteToX(range.end), y: timelineHeight / 2 }
 }
 
-const createPoll = () => {
+const createPoll = async () => {
   poll.value.id = crypto.randomUUID()
   poll.value.status = 'live'
   poll.value.startDate = new Date(poll.value.startDate).toISOString().slice(0, 10)
@@ -509,25 +516,43 @@ const createPoll = () => {
   poll.value.endAt = new Date(poll.value.endAt).toISOString()
   votes.value = []
   resetSelection(dateOptions.value)
+
+  if (hasSupabase()) {
+    try {
+      const remote = await createPollRemote(poll.value)
+      poll.value = { ...poll.value, ...remote }
+    } catch (error) {
+      // keep local copy if remote save fails
+      console.warn('Supabase poll creation failed', error)
+    }
+  }
+
   persistCurrent()
 }
 
-const submitVote = () => {
+const submitVote = async () => {
   const slots = Object.entries(selectedIntervals.value).flatMap(([day, ranges]) =>
     ranges.map((range) => ({ day, start: range.start, end: range.end })),
   )
   if (!nickname.value.trim() || slots.length === 0) return
 
-  votes.value = [
-    {
-      id: crypto.randomUUID(),
-      nickname: nickname.value.trim(),
-      comment: '',
-      editToken: crypto.randomUUID().slice(0, 8),
-      slots,
-    },
-    ...votes.value,
-  ]
+  const vote: Vote = {
+    id: crypto.randomUUID(),
+    nickname: nickname.value.trim(),
+    comment: '',
+    editToken: crypto.randomUUID().slice(0, 8),
+    slots,
+  }
+
+  if (hasSupabase() && poll.value.id) {
+    try {
+      await submitVoteRemote(poll.value.id, vote)
+    } catch (error) {
+      console.warn('Supabase vote submission failed', error)
+    }
+  }
+
+  votes.value = [vote, ...votes.value]
   nickname.value = ''
   resetSelection(dateOptions.value)
   persistCurrent()
@@ -582,12 +607,45 @@ const bootstrap = () => {
   }
 }
 
-const ensurePollLoaded = (id: string) => {
+const loadPollRemote = async (id: string): Promise<boolean> => {
+  if (!hasSupabase()) return false
+  const remotePoll = await fetchPollRemote(id)
+  if (!remotePoll) return false
+
+  poll.value = { ...defaultPoll(), ...remotePoll }
+  votes.value = await fetchVotesRemote(id)
+  resetSelection(dateOptions.value)
+  persistCurrent()
+  return true
+}
+
+const ensurePollLoaded = async (id: string) => {
   if (poll.value.id === id) {
     if (!selectedDays.value.length) resetSelection(dateOptions.value)
+    if (hasSupabase()) {
+      try {
+        votes.value = await fetchVotesRemote(id)
+        persistCurrent()
+      } catch (error) {
+        console.warn('Supabase vote sync failed', error)
+      }
+    }
     return true
   }
-  return loadPoll(id)
+
+  if (loadPoll(id)) {
+    if (hasSupabase()) {
+      try {
+        votes.value = await fetchVotesRemote(id)
+        persistCurrent()
+      } catch (error) {
+        console.warn('Supabase vote sync failed', error)
+      }
+    }
+    return true
+  }
+
+  return await loadPollRemote(id)
 }
 
 const newDraft = () => {
